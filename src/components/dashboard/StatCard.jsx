@@ -7,8 +7,8 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, color }) => {
     <Card className="hover:scale-[1.02] transition-transform duration-300">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-400 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-white font-['Outfit']">{value}</p>
+          <p className="text-sm font-medium text-brand-secondary mb-1">{title}</p>
+          <p className="text-3xl font-bold text-brand-primary font-['Outfit']">{value}</p>
           
           <div className="mt-4 flex items-center gap-2">
             <span className={`flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -17,7 +17,7 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, color }) => {
               {trend === 'up' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
               {trendValue}%
             </span>
-            <span className="text-xs text-slate-500 font-medium">vs last month</span>
+            <span className="text-xs text-brand-secondary/70 font-medium">vs last month</span>
           </div>
         </div>
 
