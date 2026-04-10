@@ -1,66 +1,118 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../ui/Card';
 import {
   User, Package, CreditCard, CheckCircle2, ChevronRight, ChevronLeft,
-  Save, ShoppingBag, Phone, MapPin, Hash,
+  Save, ShoppingBag, Phone, MapPin, Hash, Calendar, AlertCircle, Info,
+  Mail, Settings, ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../context/OrdersContext';
 
-/* ── Tiny success toast ───────────────────────────────── */
+/* ── Success Toast ────────────────────────────────────── */
 const SuccessToast = ({ data }) => (
-  <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-4 duration-500">
-    <div className="flex items-start gap-4 bg-emerald-950/90 border border-emerald-500/40 rounded-2xl px-6 py-4 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl min-w-[320px]">
+  <div className="fixed bottom-4 left-4 right-4 sm:bottom-8 sm:right-8 sm:left-auto z-[100] animate-in slide-in-from-bottom-4 duration-500">
+    <div className="flex items-start gap-4 bg-emerald-950/95 border border-emerald-500/40 rounded-2xl px-5 py-4 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl">
       <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
       </div>
       <div>
-        <p className="text-white font-bold text-sm">{data.message}</p>
-        <p className="text-emerald-400 text-xs mt-0.5 font-mono">{data.id}</p>
-        <p className="text-emerald-100/70 text-xs mt-1">Redirecting to Orders list…</p>
+        <p className="text-white font-bold text-sm tracking-tight">{data.message}</p>
+        <p className="text-emerald-400 text-[10px] font-mono mt-0.5">{data.id}</p>
+        <p className="text-emerald-100/60 text-[10px] mt-1">Redirecting to project ledger…</p>
       </div>
     </div>
   </div>
 );
 
-/* ── Field wrapper ────────────────────────────────────── */
-const Field = ({ label, children }) => (
-  <div className="space-y-2">
-    <label className="text-xs font-bold text-brand-secondary uppercase tracking-wider">{label}</label>
+/* ── Field Wrapper ────────────────────────────────────── */
+const Field = ({ label, error, required, children, helper }) => (
+  <div className="space-y-1.5 w-full">
+    <div className="flex items-center justify-between">
+      <label className="text-[10px] font-black text-brand-secondary uppercase tracking-[0.1em] flex items-center gap-1">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      {error && (
+        <span className="text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-right-1">
+          {error}
+        </span>
+      )}
+    </div>
     {children}
+    {helper && !error && (
+      <p className="text-[10px] text-brand-secondary/60 italic px-1">{helper}</p>
+    )}
   </div>
 );
 
-/* ── Styled input ─────────────────────────────────────── */
-const inputCls =
-  'w-full bg-brand-surface/50 border border-brand-border/60 rounded-xl py-3 px-4 focus:outline-none focus:border-brand-accent/50 focus:ring-4 focus:ring-brand-accent/5 transition-all text-brand-primary placeholder:text-brand-secondary/50 hover:border-brand-border';
+/* ── Styled Input Base ────────────────────────────────── */
+const inputBaseCls = (hasError) => 
+  `w-full bg-brand-surface border rounded-xl py-3 px-4 focus:outline-none transition-all text-sm sm:text-base ${
+    hasError 
+      ? 'border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/5 text-rose-500 placeholder:text-rose-300' 
+      : 'border-brand-border focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/5 text-brand-primary placeholder:text-brand-secondary/40'
+  }`;
 
 /* ────────────────────────────────────────────────────── */
 const CreateOrderForm = ({ existingOrder }) => {
   const [step, setStep] = useState(1);
   const [toast, setToast] = useState(null);
+  const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
+  const { addOrder, updateOrder } = useOrders();
+
   const [formData, setFormData] = useState({
     customerName: existingOrder?.customer || '',
     email: existingOrder?.email || '',
     phone: existingOrder?.phone || '',
     address: existingOrder?.address || '',
-    product: existingOrder?.product_key || existingOrder?.product || '', // Handle keys or labels
+    product: existingOrder?.product_key || existingOrder?.product || '', 
     quantity: existingOrder?.quantity || existingOrder?.items || '1',
     priority: existingOrder?.priority || 'medium',
+    status: existingOrder?.status || 'pending',
+    date: existingOrder?.date || new Date().toISOString().split('T')[0],
     paymentMethod: existingOrder?.paymentMethod || 'credit_card',
     notes: existingOrder?.notes || '',
   });
 
-  const navigate = useNavigate();
-  const { addOrder, updateOrder } = useOrders();
+  const set = (key) => (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, [key]: value }));
+    // Clear error for this field
+    if (errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: null }));
+    }
+  };
 
-  const set = (key) => (e) => setFormData((prev) => ({ ...prev, [key]: e.target.value }));
+  const validateStep = (currentStep) => {
+    let newErrors = {};
+    if (currentStep === 1) {
+      if (!formData.customerName.trim()) newErrors.customerName = 'Name is required';
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email is required';
+      } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+        newErrors.email = 'Invalid email format';
+      }
+      if (!formData.address.trim()) newErrors.address = 'City is required';
+    } else if (currentStep === 2) {
+      if (!formData.product) newErrors.product = 'Select a product';
+      if (formData.quantity < 1) newErrors.quantity = 'Min quantity is 1';
+      if (!formData.date) newErrors.date = 'Date is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-  const nextStep = () => setStep((s) => s + 1);
+  const nextStep = () => {
+    if (validateStep(step)) setStep((s) => s + 1);
+  };
+  
   const prevStep = () => setStep((s) => s - 1);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!validateStep(step)) return;
+
     if (existingOrder) {
       updateOrder(existingOrder.id, {
         customer: formData.customerName,
@@ -70,13 +122,15 @@ const CreateOrderForm = ({ existingOrder }) => {
         product: formData.product,
         items: parseInt(formData.quantity, 10),
         priority: formData.priority,
+        status: formData.status,
+        date: formData.date,
         paymentMethod: formData.paymentMethod,
         notes: formData.notes,
       });
-      setToast({ id: existingOrder.id, message: 'Order Updated!' });
+      setToast({ id: existingOrder.id, message: 'Registry Synchronized!' });
     } else {
       const newOrder = addOrder(formData);
-      setToast({ id: newOrder.id, message: 'Order Created!' });
+      setToast({ id: newOrder.id, message: 'Order Confirmed!' });
     }
     
     setTimeout(() => {
@@ -86,296 +140,337 @@ const CreateOrderForm = ({ existingOrder }) => {
   };
 
   const steps = [
-    { title: 'Customer Info', icon: User },
-    { title: 'Order Details', icon: Package },
-    { title: 'Payment', icon: CreditCard },
+    { title: 'Customer Profile', icon: User, desc: 'Client identity and contact' },
+    { title: 'Project Specs', icon: Settings, desc: 'Requirement configuration' },
+    { title: 'Review & Pay', icon: CreditCard, desc: 'Finalizing transaction' },
   ];
 
   return (
     <>
       {toast && <SuccessToast data={toast} />}
 
-      <div className="max-w-4xl mx-auto py-8">
-        {/* ── Stepper ── */}
-        <div className="flex items-center justify-between mb-12">
-          {steps.map((s, i) => (
-            <React.Fragment key={i}>
-              <div className="flex flex-col items-center gap-3 relative z-10">
-                <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-xl ${
-                    step >= i + 1
-                      ? 'bg-brand-gradient text-white scale-110'
-                      : 'bg-brand-surface border border-brand-border text-brand-secondary'
-                  }`}
-                >
-                  <s.icon className="w-6 h-6" />
+      <div className="max-w-4xl mx-auto py-6 sm:py-10 px-4 sm:px-0">
+        {/* ── Visual Stepper ── */}
+        <div className="grid grid-cols-3 gap-4 mb-10 sm:mb-14">
+          {steps.map((s, i) => {
+            const isCompleted = step > i + 1;
+            const isActive = step === i + 1;
+            return (
+              <div key={i} className="flex flex-col items-center text-center group">
+                <div className="relative w-full flex items-center justify-center mb-4">
+                  {/* Connector Line */}
+                  {i < steps.length - 1 && (
+                    <div className="absolute left-[50%] right-[-50%] top-1/2 -translate-y-1/2 h-0.5 bg-brand-border/30">
+                      <div className={`h-full bg-brand-gradient transition-all duration-700 ${isCompleted ? 'w-full' : 'w-0'}`} />
+                    </div>
+                  )}
+                  
+                  <div className={`relative z-10 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                    isActive ? 'bg-brand-gradient text-white scale-110 shadow-xl shadow-brand-accent/30 ring-4 ring-brand-accent/5' : 
+                    isCompleted ? 'bg-brand-accent text-white' : 'bg-brand-surface border-2 border-brand-border text-brand-secondary/40'
+                  }`}>
+                    {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
+                  </div>
                 </div>
-                <span
-                  className={`text-xs font-bold uppercase tracking-widest ${
-                    step >= i + 1 ? 'text-brand-accent' : 'text-brand-secondary'
-                  }`}
-                >
-                  {s.title}
-                </span>
+                <div className="hidden sm:block">
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-brand-accent' : 'text-brand-secondary/60'}`}>{s.title}</p>
+                  <p className="text-[9px] text-brand-secondary/40 mt-1">{s.desc}</p>
+                </div>
               </div>
-              {i < steps.length - 1 && (
-                <div className="flex-1 h-0.5 mx-4 bg-brand-border/30 relative -top-4">
-                  <div
-                    className={`absolute inset-0 bg-brand-accent transition-all duration-500 ${
-                      step > i + 1 ? 'w-full' : 'w-0'
-                    }`}
-                  />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
+            );
+          })}
         </div>
 
-        <Card
-          title={existingOrder ? `Edit Order ${existingOrder.id}` : steps[step - 1].title}
-          subtitle={existingOrder ? 'Make changes to this order entry.' : `Complete step ${step} of 3 to create a new order`}
-        >
-          <form onSubmit={handleSubmit} className="mt-4 space-y-6">
-            {/* ── Step 1: Customer Info ── */}
+        <Card className="shadow-2xl shadow-brand-accent/5 overflow-visible">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* ── Header ── */}
+            <div className="pb-6 border-b border-brand-border/30">
+              <h2 className="text-xl sm:text-2xl font-bold text-brand-primary flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-brand-accent/10 text-brand-accent">
+                  {React.createElement(steps[step-1].icon, { className: 'w-5 h-5' })}
+                </div>
+                {existingOrder ? 'Update Instance' : steps[step - 1].title}
+              </h2>
+              <p className="text-sm text-brand-secondary mt-1">{existingOrder ? `Modifying order record ${existingOrder.id}` : steps[step-1].desc}</p>
+            </div>
+
+            {/* ── STEP 1: CUSTOMER INFO ── */}
             {step === 1 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-right-4 duration-500">
-                <Field label="Full Name">
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-secondary" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <Field label="Client Full Name" required error={errors.customerName} helper="Enter legal or company name">
+                  <div className="relative group">
+                    <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${errors.customerName ? 'text-rose-400' : 'text-brand-secondary group-focus-within:text-brand-accent'}`} />
                     <input
                       type="text"
-                      placeholder="e.g. John Doe"
-                      className={`${inputCls} pl-10`}
+                      placeholder="e.g. Alex Rivera"
+                      className={`${inputBaseCls(errors.customerName)} pl-12`}
                       value={formData.customerName}
                       onChange={set('customerName')}
-                      required
                     />
                   </div>
                 </Field>
 
-                <Field label="Email Address">
-                  <input
-                    type="email"
-                    placeholder="john@example.com"
-                    className={inputCls}
-                    value={formData.email}
-                    onChange={set('email')}
-                    required
-                  />
+                <Field label="Business Email" required error={errors.email}>
+                  <div className="relative group">
+                    <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${errors.email ? 'text-rose-400' : 'text-brand-secondary group-focus-within:text-brand-accent'}`} />
+                    <input
+                      type="email"
+                      placeholder="alex@company.com"
+                      className={`${inputBaseCls(errors.email)} pl-12`}
+                      value={formData.email}
+                      onChange={set('email')}
+                    />
+                  </div>
                 </Field>
 
-                <Field label="Phone Number">
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-secondary" />
+                <Field label="Phone Contact" helper="Optional mobile or office line">
+                  <div className="relative group">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-secondary group-focus-within:text-brand-accent transition-colors" />
                     <input
                       type="tel"
                       placeholder="+1 (555) 000-0000"
-                      className={`${inputCls} pl-10`}
+                      className={`${inputBaseCls(false)} pl-12`}
                       value={formData.phone}
                       onChange={set('phone')}
                     />
                   </div>
                 </Field>
 
-                <Field label="City / Region">
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-secondary" />
+                <Field label="Primary City" required error={errors.address} helper="Regional logistics anchor">
+                  <div className="relative group">
+                    <MapPin className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${errors.address ? 'text-rose-400' : 'text-brand-secondary group-focus-within:text-brand-accent'}`} />
                     <input
                       type="text"
-                      placeholder="e.g. New York"
-                      className={`${inputCls} pl-10`}
+                      placeholder="e.g. Neo Tokyo"
+                      className={`${inputBaseCls(errors.address)} pl-12`}
                       value={formData.address}
                       onChange={set('address')}
-                      required
                     />
                   </div>
                 </Field>
               </div>
             )}
 
-            {/* ── Step 2: Order Details ── */}
+            {/* ── STEP 2: PROJECT SPECS ── */}
             {step === 2 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-right-4 duration-500">
-                <Field label="Select Product">
-                  <select
-                    className={inputCls}
-                    value={formData.product}
-                    onChange={set('product')}
-                    required
-                  >
-                    <option value="" className="bg-brand-surface text-brand-primary">Choose a product…</option>
-                    <option value="cloud_pro" className="bg-brand-surface text-brand-primary">Cloud Services Pro — $799</option>
-                    <option value="enterprise_suite" className="bg-brand-surface text-brand-primary">Enterprise Suite — $2,499</option>
-                    <option value="data_analytics" className="bg-brand-surface text-brand-primary">Data Analytics Plus — $1,199</option>
-                  </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <Field label="Product Tier" required error={errors.product}>
+                  <div className="relative group">
+                    <ShoppingBag className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${errors.product ? 'text-rose-400' : 'text-brand-secondary group-focus-within:text-brand-accent'}`} />
+                    <select
+                      className={`${inputBaseCls(errors.product)} pl-12 appearance-none`}
+                      value={formData.product}
+                      onChange={set('product')}
+                    >
+                      <option value="" disabled>Select Specification...</option>
+                      <option value="cloud_pro">Cloud Core Professional</option>
+                      <option value="enterprise_suite">Elite Enterprise Suite</option>
+                      <option value="data_analytics">Neural Data Analytics</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-secondary pointer-events-none group-focus-within:rotate-180 transition-transform" />
+                  </div>
                 </Field>
 
-                <Field label="Quantity">
-                  <div className="relative">
-                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-secondary" />
+                <Field label="Project Date" required error={errors.date} helper="Execution or delivery threshold">
+                  <div className="relative group">
+                    <Calendar className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${errors.date ? 'text-rose-400' : 'text-brand-secondary group-focus-within:text-brand-accent'}`} />
+                    <input
+                      type="date"
+                      className={`${inputBaseCls(errors.date)} pl-12`}
+                      value={formData.date}
+                      onChange={set('date')}
+                    />
+                  </div>
+                </Field>
+
+                <Field label="Quantity Units" required error={errors.quantity}>
+                  <div className="relative group">
+                    <Hash className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${errors.quantity ? 'text-rose-400' : 'text-brand-secondary group-focus-within:text-brand-accent'}`} />
                     <input
                       type="number"
                       min="1"
-                      max="99"
-                      className={`${inputCls} pl-10`}
+                      className={`${inputBaseCls(errors.quantity)} pl-12`}
                       value={formData.quantity}
                       onChange={set('quantity')}
                     />
                   </div>
                 </Field>
 
-                <Field label="Priority">
-                  <div className="flex gap-3">
-                    {['low', 'medium', 'high'].map((p) => (
+                <Field label="Current Status" helper="Initial phase classification">
+                  <div className="grid grid-cols-2 gap-2">
+                    {['pending', 'progress'].map((s) => (
                       <button
-                        key={p}
+                        key={s}
                         type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, priority: p }))}
-                        className={`flex-1 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${
-                          formData.priority === p
-                            ? 'bg-brand-accent/10 border-brand-accent text-brand-accent'
-                            : 'bg-brand-surface border-brand-border text-brand-secondary hover:border-slate-500'
+                        onClick={() => setFormData((prev) => ({ ...prev, status: s }))}
+                        className={`py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                          formData.status === s 
+                            ? 'bg-brand-accent/10 border-brand-accent text-brand-accent shadow-sm' 
+                            : 'bg-brand-surface border-brand-border text-brand-secondary/50 hover:border-brand-accent/20'
                         }`}
                       >
-                        {p}
+                        {s}
                       </button>
                     ))}
                   </div>
                 </Field>
 
-                <Field label="Order Notes">
-                  <textarea
-                    rows="3"
-                    placeholder="Any special instructions…"
-                    className={inputCls}
-                    value={formData.notes}
-                    onChange={set('notes')}
-                  />
-                </Field>
+                <div className="md:col-span-2">
+                  <Field label="Priority Protocol">
+                    <div className="flex flex-wrap gap-2">
+                      {['low', 'medium', 'high'].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, priority: p }))}
+                          className={`flex-1 min-w-[100px] py-3 rounded-xl border-2 text-xs font-bold uppercase tracking-widest transition-all ${
+                            formData.priority === p 
+                              ? 'bg-brand-accent border-brand-accent text-white shadow-lg shadow-brand-accent/20' 
+                              : 'bg-brand-surface border-brand-border text-brand-secondary hover:border-brand-secondary/40'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Field label="Internal Annotation" helper="Confidential project details">
+                    <textarea
+                      rows="3"
+                      placeholder="Add specific execution requirements here..."
+                      className={inputBaseCls(false)}
+                      value={formData.notes}
+                      onChange={set('notes')}
+                    />
+                  </Field>
+                </div>
               </div>
             )}
 
-            {/* ── Step 3: Payment + Summary ── */}
+            {/* ── STEP 3: REVIEW & PAY ── */}
             {step === 3 && (
-              <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                {/* Method Selection */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { id: 'credit_card', name: 'Credit Card', desc: 'Secure online payment', icon: CreditCard },
-                    { id: 'paypal', name: 'PayPal', desc: 'Fast and easy', icon: CheckCircle2 },
+                    { id: 'credit_card', name: 'Secure Card', desc: 'Encrypted Gateway', icon: CreditCard },
+                    { id: 'paypal', name: 'Digital Wallet', desc: 'Instant Verification', icon: Info },
                   ].map((method) => (
                     <div
                       key={method.id}
                       onClick={() => setFormData((prev) => ({ ...prev, paymentMethod: method.id }))}
-                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                        formData.paymentMethod === method.id
-                          ? 'border-brand-accent bg-brand-accent/5 shadow-lg shadow-brand-accent/5'
+                      className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-4 ${
+                        formData.paymentMethod === method.id 
+                          ? 'border-brand-accent bg-brand-accent/5 ring-4 ring-brand-accent/5' 
                           : 'border-brand-border/40 hover:border-brand-border'
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`p-2 rounded-xl ${
-                            formData.paymentMethod === method.id
-                              ? 'bg-brand-accent text-white'
-                              : 'bg-brand-surface border border-brand-border/30 text-brand-secondary'
-                          }`}
-                        >
-                          <method.icon className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className={`font-bold text-sm ${formData.paymentMethod === method.id ? 'text-white' : 'text-brand-primary'}`}>{method.name}</p>
-                          <p className={`text-xs ${formData.paymentMethod === method.id ? 'text-white/70' : 'text-brand-secondary'}`}>{method.desc}</p>
-                        </div>
+                      <div className={`p-3 rounded-xl ${formData.paymentMethod === method.id ? 'bg-brand-accent text-white' : 'bg-brand-surface border border-brand-border/30 text-brand-secondary'}`}>
+                        <method.icon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className={`font-black text-sm uppercase tracking-tight ${formData.paymentMethod === method.id ? 'text-brand-accent' : 'text-brand-primary'}`}>{method.name}</p>
+                        <p className="text-[10px] text-brand-secondary font-medium">{method.desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Order Summary Card */}
-                <div className="bg-brand-surface/30 p-6 rounded-2xl border border-brand-border/30">
-                  <div className="flex items-center gap-4 mb-5">
-                    <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center">
-                      <ShoppingBag className="w-6 h-6 text-brand-accent" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-brand-primary">Order Summary</h4>
-                      <p className="text-xs text-brand-secondary italic">Review your details before submitting</p>
-                    </div>
+                {/* Ledger Summary */}
+                <div className="bg-brand-surface border border-brand-border p-6 sm:p-8 rounded-3xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
+                    <CheckCircle2 className="w-32 h-32 text-brand-accent" />
                   </div>
-
-                  <div className="space-y-3 text-sm divide-y divide-brand-border/20">
-                    {[
-                      { label: 'Customer', value: formData.customerName || '—' },
-                      { label: 'Email', value: formData.email || '—' },
-                      { label: 'Phone', value: formData.phone || '—' },
-                      { label: 'Address', value: formData.address || '—' },
-                      {
-                        label: 'Product',
-                        value:
-                          formData.product
-                            ? { cloud_pro: 'Cloud Services Pro', enterprise_suite: 'Enterprise Suite', data_analytics: 'Data Analytics Plus' }[formData.product] || formData.product
-                            : '—',
-                      },
-                      { label: 'Quantity', value: formData.quantity },
-                      {
-                        label: 'Priority',
-                        value: formData.priority,
-                        accent: true,
-                      },
-                      { label: 'Payment', value: formData.paymentMethod === 'credit_card' ? 'Credit Card' : 'PayPal' },
-                    ].map((row) => (
-                      <div key={row.label} className="flex justify-between pt-3 first:pt-0">
-                        <span className="text-brand-secondary">{row.label}</span>
-                        <span
-                          className={
-                            row.accent
-                              ? 'text-brand-accent font-bold uppercase text-xs tracking-wider'
-                              : 'text-brand-primary font-medium'
-                          }
-                        >
-                          {row.value}
-                        </span>
+                  
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="w-10 h-10 rounded-xl bg-brand-accent flex items-center justify-center text-white">
+                        <ShoppingBag className="w-5 h-5" />
                       </div>
-                    ))}
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-brand-primary uppercase tracking-[0.2em]">Deployment Ledger</h4>
+                        <p className="text-[10px] text-brand-secondary font-medium">System verification of order integrity</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 max-w-sm">
+                      {[
+                        { label: 'Client Entity', value: formData.customerName },
+                        { label: 'Asset Tier', value: formData.product || 'Not set' },
+                        { label: 'Quantity', value: formData.quantity },
+                        { label: 'Schedule', value: formData.date },
+                        { label: 'Priority', value: formData.priority, accent: true },
+                      ].map((row) => (
+                        <div key={row.label} className="flex justify-between items-center text-xs">
+                          <span className="text-brand-secondary font-bold uppercase tracking-widest text-[9px]">{row.label}</span>
+                          <span className={`${row.accent ? 'text-brand-accent bg-brand-accent/10 px-2 py-0.5 rounded-full font-black' : 'text-brand-primary font-bold'}`}>
+                            {row.value || 'N/A'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-8 pt-6 border-t border-brand-border flex justify-between items-end">
+                      <div>
+                        <p className="text-[9px] font-black text-brand-secondary uppercase tracking-[0.2em] mb-1">Total Resource Value</p>
+                        <p className="text-3xl font-black text-brand-primary tracking-tighter">$ {(parseInt(formData.quantity || 0) * 899).toLocaleString()}</p>
+                      </div>
+                      <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+                        Zero Tax
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ── Navigation Buttons ── */}
-            <div className="pt-6 flex justify-between">
+            {/* ── FOOTER ACTIONS ── */}
+            <div className="pt-8 border-t border-brand-border/30 flex items-center justify-between gap-4">
               <button
                 type="button"
                 onClick={prevStep}
                 disabled={step === 1}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  step === 1
-                    ? 'opacity-0 pointer-events-none'
-                    : 'bg-brand-surface border border-brand-border text-brand-secondary hover:text-brand-primary'
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  step === 1 
+                    ? 'opacity-0 pointer-events-none' 
+                    : 'bg-brand-surface border border-brand-border text-brand-secondary hover:text-brand-primary hover:border-brand-secondary/40'
                 }`}
               >
-                <ChevronLeft className="w-4 h-4" /> Back
+                <ChevronLeft className="w-4 h-4" /> Previous Phase
               </button>
 
               {step < 3 ? (
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="flex items-center gap-2 bg-brand-gradient px-8 py-2.5 rounded-xl text-white font-bold shadow-lg shadow-brand-accent/20 hover:scale-105 transition-all text-sm"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-brand-gradient px-10 py-3 rounded-xl text-white font-black shadow-xl shadow-brand-accent/20 hover:scale-[1.03] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-widest"
                 >
-                  Next Step <ChevronRight className="w-4 h-4" />
+                  Confirm Policy <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button
                   type="submit"
-                  className="flex items-center gap-2 bg-status-completed shadow-lg shadow-emerald-500/20 px-8 py-2.5 rounded-xl text-white font-bold hover:scale-105 transition-all text-sm"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-brand-accent px-12 py-3 rounded-xl text-white font-black shadow-xl shadow-brand-accent/30 hover:scale-[1.03] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-widest"
                 >
-                  <Save className="w-4 h-4" /> {existingOrder ? 'Save Changes' : 'Finalize Order'}
+                  <Save className="w-4 h-4" /> {existingOrder ? 'Sync Updates' : 'Execute Order'}
                 </button>
               )}
             </div>
           </form>
         </Card>
+
+        {/* ── Context Help ── */}
+        <div className="mt-8 flex items-center justify-center gap-8 opacity-40">
+           <div className="flex items-center gap-2 text-[10px] font-bold text-brand-secondary uppercase tracking-widest">
+             <AlertCircle className="w-3 h-3" /> Encrypted Session
+           </div>
+           <div className="flex items-center gap-2 text-[10px] font-bold text-brand-secondary uppercase tracking-widest">
+             <Info className="w-3 h-3" /> Auto-Save Active
+           </div>
+        </div>
       </div>
     </>
   );

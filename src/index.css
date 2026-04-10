@@ -24,7 +24,7 @@
   body {
     @apply antialiased;
     background-color: rgb(var(--brand-dark));
-    color: rgb(var(--text-secondary));
+    color: rgb(var(--text-primary));
     font-family: 'Inter', sans-serif;
   }
   

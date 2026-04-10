@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
-import { Search, Bell, Sun, Moon, User } from 'lucide-react';
+import { Search, Bell, Sun, Moon, User, Menu } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import NotificationPanel from '../notifications/NotificationPanel';
+import { useState } from 'react';
 
-const Header = () => {
+const Header = ({ onMenuClick }) => {
   const { isDark, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <header className="fixed top-0 right-0 left-64 h-20 bg-brand-dark/30 backdrop-blur-md border-b border-brand-border/30 z-40 flex items-center justify-between px-8">
-      <div className="flex-1 max-w-xl">
-        <div className="relative group">
+    <header className="fixed top-0 right-0 left-0 lg:left-64 h-20 bg-brand-dark/30 backdrop-blur-md border-b border-brand-border/30 z-40 flex items-center justify-between px-4 lg:px-8">
+      <div className="flex items-center gap-4 flex-1 max-w-xl">
+        <button 
+          onClick={onMenuClick}
+          className="lg:hidden p-2 rounded-xl bg-brand-surface border border-brand-border text-brand-secondary hover:text-brand-primary"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        
+        <div className="relative group flex-1 hidden md:block">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-secondary w-5 h-5 group-focus-within:text-brand-accent transition-colors" />
           <input 
             type="text" 
-            placeholder="Search for orders, customers, or analytics..." 
-            className="w-full bg-brand-surface/50 border border-brand-border/30 rounded-xl py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-accent/50 focus:ring-4 focus:ring-brand-accent/5 hover:bg-brand-surface/70 transition-all placeholder:text-brand-secondary/50 text-brand-primary"
+            placeholder="Search..." 
+            className="w-full bg-brand-surface/50 border border-brand-border/30 rounded-xl py-2 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-accent/50 focus:ring-4 focus:ring-brand-accent/5 transition-all text-brand-primary"
           />
         </div>
       </div>

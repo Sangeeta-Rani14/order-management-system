@@ -33,20 +33,20 @@ const Dashboard = () => {
     <PageWrapper>
       <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold font-['Outfit'] text-brand-primary">Dashboard Overview</h1>
-            <p className="text-brand-secondary mt-1">Welcome back, John. Here's what's happening with your orders today.</p>
+            <h1 className="text-2xl md:text-3xl font-bold font-['Outfit'] text-brand-primary">Dashboard Overview</h1>
+            <p className="text-brand-secondary mt-1 text-sm md:text-base">Welcome back, John. Here's what's happening today.</p>
           </div>
-          <Link to="/orders/new">
-            <button className="bg-brand-gradient px-6 py-2.5 rounded-xl text-white font-semibold shadow-lg shadow-brand-accent/20 hover:scale-105 transition-all text-sm">
+          <Link to="/orders/new" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto bg-brand-gradient px-6 py-2.5 rounded-xl text-white font-semibold shadow-lg shadow-brand-accent/20 hover:scale-105 transition-all text-sm">
               + Create New Order
             </button>
           </Link>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <StatCard 
             title="Total Orders" 
             value={stats.total} 
