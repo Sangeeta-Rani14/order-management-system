@@ -17,6 +17,7 @@ function App() {
           <Route path="/orders/new" element={<CreateOrder />} />
           <Route path="/orders/:id" element={<OrderDetail />} />
          
+         
           <Route path="/notifications" element={<ActivityPanel />} />
          
         </Routes>
