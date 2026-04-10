@@ -3,7 +3,8 @@ import PageWrapper from '../components/layout/PageWrapper';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
-import { Search, Filter, MoreVertical, Download, Plus, ArrowUpDown, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { Search, Filter, MoreVertical, Download, Plus, ArrowUpDown, ChevronLeft, ChevronRight, Mail, Sparkles, Edit2, Trash2 } from 'lucide-react';
+import { useOrders } from '../context/OrdersContext';
 import { mockOrders } from '../data/mockOrders';
 import { Link } from 'react-router-dom';
 
@@ -11,18 +12,29 @@ const OrderListing = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { orders, deleteOrder } = useOrders();
+
+  const handleDelete = (id) => {
+    if (window.confirm(`Are you sure you want to delete order ${id}?`)) {
+      deleteOrder(id);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
 
-  const filteredOrders = mockOrders.filter(order => {
-    const matchesSearch = order.customer.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // IDs that are new (not in the original mock data)
+  const mockIds = new Set(mockOrders.map((o) => o.id));
+  const isNew = (id) => !mockIds.has(id);
 
   return (
     <PageWrapper>
@@ -116,15 +128,27 @@ const OrderListing = () => {
                   ))
                 ) : filteredOrders.length > 0 ? (
                   filteredOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-brand-accent/5 transition-colors group">
+                    <tr 
+                      key={order.id} 
+                      className={`border-b border-brand-border last:border-0 hover:bg-brand-surface/30 transition-all group ${
+                        isNew(order.id) ? 'bg-emerald-500/5' : ''
+                      }`}
+                    >
                       <td className="px-6 py-4 font-mono text-xs font-semibold text-brand-accent group-hover:scale-105 transition-transform">
-                        <Link to={`/orders/${order.id}`} className="hover:underline">
-                          {order.id}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link to={`/orders/${order.id}`} className="hover:underline">
+                            {order.id}
+                          </Link>
+                          {isNew(order.id) && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
+                              <Sparkles className="w-2.5 h-2.5" /> New
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-brand-surface border border-brand-border flex items-center justify-center font-bold text-xs text-white group-hover:bg-brand-gradient transition-all shadow-md">
+                          <div className="w-10 h-10 rounded-xl bg-brand-surface border border-brand-border flex items-center justify-center font-bold text-xs text-brand-primary group-hover:bg-brand-gradient group-hover:text-white transition-all shadow-md">
                             {order.avatar}
                           </div>
                           <div>
@@ -147,13 +171,26 @@ const OrderListing = () => {
                           {order.priority}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-xs text-slate-400 font-medium">
+                      <td className="px-6 py-4 text-xs text-brand-secondary/80 font-medium">
                         {order.date}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="p-2 rounded-lg hover:bg-brand-surface transition-all text-slate-500 hover:text-white">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link to={`/orders/edit/${order.id}`}>
+                            <button className="p-2 rounded-lg hover:bg-brand-accent/10 transition-all text-brand-secondary hover:text-brand-accent" title="Edit Order">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </Link>
+                          <button 
+                            onClick={() => handleDelete(order.id)}
+                            className="p-2 rounded-lg hover:bg-rose-500/10 transition-all text-brand-secondary hover:text-rose-500" title="Delete Order"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button className="p-2 rounded-lg hover:bg-brand-surface transition-all text-brand-secondary hover:text-white">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -174,14 +211,14 @@ const OrderListing = () => {
           
           {/* Pagination */}
           <div className="px-6 py-4 border-t border-brand-border/30 flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">
-              Showing <span className="text-slate-300 font-bold">{filteredOrders.length}</span> of <span className="text-slate-300 font-bold">{mockOrders.length}</span> orders
+            <span className="text-xs text-brand-secondary font-medium">
+              Showing <span className="text-brand-primary font-bold">{filteredOrders.length}</span> of <span className="text-brand-primary font-bold">{orders.length}</span> orders
             </span>
             <div className="flex items-center gap-2">
-              <button className="p-2 rounded-xl border border-brand-border/30 text-slate-500 hover:text-white hover:bg-brand-surface disabled:opacity-30 disabled:hover:bg-transparent" disabled>
+              <button className="p-2 rounded-xl border border-brand-border text-brand-secondary hover:text-brand-primary hover:bg-brand-surface disabled:opacity-30 disabled:hover:bg-transparent" disabled>
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button className="p-2 rounded-xl border border-brand-border/30 text-slate-500 hover:text-white hover:bg-brand-surface">
+              <button className="p-2 rounded-xl border border-brand-border text-brand-secondary hover:text-brand-primary hover:bg-brand-surface">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

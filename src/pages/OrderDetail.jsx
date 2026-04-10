@@ -17,24 +17,27 @@ import {
   CreditCard,
   CheckCircle2,
   FileText,
-  AlertCircle
+  AlertCircle,
+  ShoppingBag,
+  Edit2
 } from 'lucide-react';
-import { mockOrders } from '../data/mockOrders';
+import { useOrders } from '../context/OrdersContext';
 
 const OrderDetail = () => {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState(null);
+  const { orders } = useOrders();
 
   useEffect(() => {
-    // Simulate API fetch
+    // Simulate API fetch delay
     const timer = setTimeout(() => {
-      const found = mockOrders.find(o => o.id === id) || mockOrders[0];
+      const found = orders.find(o => o.id === id);
       setOrder(found);
       setLoading(false);
     }, 600);
     return () => clearTimeout(timer);
-  }, [id]);
+  }, [id, orders]);
 
   if (loading) {
     return (
@@ -53,10 +56,29 @@ const OrderDetail = () => {
     );
   }
 
+  if (!order) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+          <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center">
+            <AlertCircle className="w-10 h-10 text-rose-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-brand-primary">Order Not Found</h2>
+          <p className="text-brand-secondary">The order with ID {id} could not be found.</p>
+          <Link to="/orders">
+            <button className="bg-brand-gradient px-6 py-2.5 rounded-xl text-white font-semibold">
+              Back to Orders
+            </button>
+          </Link>
+        </div>
+      </PageWrapper>
+    );
+  }
+
   const timeline = [
-    { status: 'Order Placed', date: 'March 15, 2024, 09:41 AM', completed: true, icon: FileText },
-    { status: 'Payment Verified', date: 'March 15, 2024, 10:20 AM', completed: true, icon: CreditCard },
-    { status: 'In Processing', date: 'March 15, 2024, 02:15 PM', completed: order.status !== 'pending', icon: Package },
+    { status: 'Order Placed', date: `${order.date}, 09:41 AM`, completed: true, icon: FileText },
+    { status: 'Payment Verified', date: `${order.date}, 10:20 AM`, completed: true, icon: CreditCard },
+    { status: 'In Processing', date: 'Processing...', completed: order.status !== 'pending', icon: Package },
     { status: 'Out for Delivery', date: 'Not Yet', completed: order.status === 'completed', icon: Truck },
     { status: 'Delivered', date: 'Not Yet', completed: order.status === 'completed', icon: CheckCircle2 },
   ];
@@ -67,21 +89,23 @@ const OrderDetail = () => {
         {/* Back Button & Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4">
           <div className="flex items-center gap-4">
-            <Link to="/orders" className="p-2.5 rounded-xl bg-brand-surface border border-brand-border text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+            <Link to="/orders" className="p-2.5 rounded-xl bg-brand-surface border border-brand-border text-brand-secondary hover:text-brand-primary hover:bg-brand-surface transition-all">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold font-['Outfit'] text-white">{order.id}</h1>
+                <h1 className="text-3xl font-bold font-['Outfit']">{order.id}</h1>
                 <Badge status={order.status}>{order.status}</Badge>
               </div>
-              <p className="text-slate-400 text-sm mt-1">Order created on {order.date} • Reference ID: #REF-9921</p>
+              <p className="text-brand-secondary text-sm mt-1">Order created on {order.date} • Reference ID: #REF-{order.id.split('-')[1]}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="px-6 py-2.5 bg-brand-surface border border-brand-border rounded-xl text-sm font-semibold hover:bg-white/5 transition-all">
-              Download PDF
-            </button>
+            <Link to={`/orders/edit/${order.id}`}>
+              <button className="px-6 py-2.5 bg-brand-surface border border-brand-border rounded-xl text-sm font-semibold hover:border-brand-accent transition-all flex items-center gap-2 text-brand-primary">
+                <Edit2 className="w-4 h-4" /> Edit Order
+              </button>
+            </Link>
             <button className="px-6 py-2.5 bg-brand-gradient rounded-xl text-sm font-bold text-white shadow-lg shadow-brand-accent/20 hover:scale-105 transition-all">
               Track Shipment
             </button>
@@ -94,45 +118,39 @@ const OrderDetail = () => {
             {/* Order Items */}
             <Card title="Order Summary" subtitle="Details of ordered items and pricing">
               <div className="space-y-6">
-                {[1, 2].map((item) => (
-                  <div key={item} className="flex items-center justify-between pb-6 border-b border-brand-border/20 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-xl bg-white/5 border border-brand-border/30 flex items-center justify-center p-2">
-                        <Package className="w-8 h-8 text-brand-accent opacity-50" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-white">Premium Cloud Services Pro</p>
-                        <p className="text-xs text-slate-500 mt-0.5 font-medium tracking-wide uppercase">Subscription • Annual</p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs bg-brand-surface border border-brand-border px-2 py-0.5 rounded text-slate-300">QTY: 01</span>
-                        </div>
-                      </div>
+                <div className="flex items-center justify-between pb-6 border-b border-brand-border/20 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-brand-surface border border-brand-border/40 flex items-center justify-center p-2">
+                      <ShoppingBag className="w-8 h-8 text-brand-accent opacity-50" />
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-white">$625.00</p>
-                      <p className="text-xs text-slate-500 font-medium">Billed annually</p>
+                    <div>
+                      <p className="font-semibold text-brand-primary">{order.product || 'Premium Services Bundle'}</p>
+                      <p className="text-xs text-brand-secondary mt-0.5 font-medium tracking-wide uppercase">Subscription • Professional</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-xs bg-brand-surface border border-brand-border px-2 py-0.5 rounded text-brand-primary">QTY: {order.items || 1}</span>
+                      </div>
                     </div>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-brand-primary">${(order.total / (order.items || 1)).toLocaleString()}</p>
+                    <p className="text-xs text-brand-secondary font-medium">per unit</p>
+                  </div>
+                </div>
               </div>
 
               {/* Totals Section */}
               <div className="mt-8 p-6 rounded-2xl bg-brand-surface/30 border border-brand-border/30 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Subtotal</span>
-                  <span className="text-slate-200 font-semibold">$1,250.00</span>
+                  <span className="text-brand-secondary">Subtotal</span>
+                  <span className="text-brand-primary font-semibold">${order.total.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Tax (8%)</span>
-                  <span className="text-slate-200 font-semibold">$100.00</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Discount (OMS20)</span>
-                  <span className="text-status-completed font-semibold">-$25.00</span>
+                  <span className="text-brand-secondary">Tax (0%)</span>
+                  <span className="text-brand-primary font-semibold">$0.00</span>
                 </div>
                 <div className="pt-3 border-t border-brand-border/30 flex justify-between">
-                  <span className="text-lg font-bold text-white uppercase tracking-tighter">Total Amount</span>
-                  <span className="text-2xl font-black text-brand-accent">$1,325.00</span>
+                  <span className="text-lg font-bold text-brand-primary uppercase tracking-tighter">Total Amount</span>
+                  <span className="text-2xl font-black text-brand-accent">${order.total.toLocaleString()}</span>
                 </div>
               </div>
             </Card>
@@ -152,12 +170,12 @@ const OrderDetail = () => {
                         {step.completed ? (
                            <step.icon className="w-3 h-3 text-white" />
                         ) : (
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+                          <div className="w-1.5 h-1.5 rounded-full bg-brand-border"></div>
                         )}
                       </div>
                       <div>
-                        <p className={`text-sm font-bold tracking-tight ${step.completed ? 'text-white' : 'text-slate-500'}`}>{step.status}</p>
-                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 tracking-wide uppercase font-semibold">
+                        <p className={`text-sm font-bold tracking-tight ${step.completed ? 'text-brand-primary' : 'text-brand-secondary/50'}`}>{step.status}</p>
+                        <p className="text-xs text-brand-secondary mt-1 flex items-center gap-1.5 tracking-wide uppercase font-semibold">
                           <Clock className="w-3 h-3" /> {step.date}
                         </p>
                       </div>
@@ -176,57 +194,57 @@ const OrderDetail = () => {
                 <div className="w-20 h-20 rounded-2xl bg-brand-gradient flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-brand-accent/10 mb-4">
                   {order.avatar}
                 </div>
-                <h4 className="text-xl font-bold text-white">{order.customer}</h4>
-                <p className="text-sm text-slate-500">{order.email}</p>
+                <h4 className="text-xl font-bold">{order.customer}</h4>
+                <p className="text-sm text-brand-secondary">{order.email}</p>
               </div>
 
               <div className="mt-6 space-y-5">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 rounded-lg bg-white/5 text-slate-400">
+                  <div className="p-2 rounded-lg bg-brand-surface border border-brand-border/30 text-brand-secondary">
                     <Phone className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Phone</p>
-                    <p className="text-sm font-medium text-slate-200">+1 (555) 234-8910</p>
+                    <p className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest">Phone</p>
+                    <p className="text-sm font-medium text-brand-primary">{order.phone || '+1 (555) 000-0000'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="p-2 rounded-lg bg-white/5 text-slate-400">
+                  <div className="p-2 rounded-lg bg-brand-surface border border-brand-border/30 text-brand-secondary">
                     <MapPin className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Address</p>
-                    <p className="text-sm font-medium text-slate-200">742 Evergreen Terrace, Springfield, IL 62704</p>
+                    <p className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest">Address</p>
+                    <p className="text-sm font-medium text-brand-primary">{order.address || 'Address not provided'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="p-2 rounded-lg bg-white/5 text-slate-400">
+                  <div className="p-2 rounded-lg bg-brand-surface border border-brand-border/30 text-brand-secondary">
                     <User className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Assigned Agent</p>
-                    <p className="text-sm font-medium text-slate-200">{order.assigned}</p>
+                    <p className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest">Assigned Agent</p>
+                    <p className="text-sm font-medium text-brand-primary">{order.assigned || 'Pending Assignment'}</p>
                   </div>
                 </div>
               </div>
             </Card>
 
             {/* Additional Info */}
-            <Card title="Delivery Notes" footer={
-              <button className="text-xs font-bold text-brand-accent hover:underline w-full">Edit Instructions</button>
+            <Card title="Order Notes" footer={
+              <button className="text-xs font-bold text-brand-accent hover:underline w-full">Edit Notes</button>
             }>
-              <div className="bg-yellow-400/5 border border-yellow-400/20 p-4 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-yellow-100/70 leading-relaxed font-medium">
-                  "The gate code is 2291. Please leave the package with the concierge if unavailable."
-                </p>
+              <div className="bg-brand-accent/5 border border-brand-accent/20 p-4 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-brand-accent shrink-0 mt-0.5" />
+                <div className="text-xs text-brand-primary leading-relaxed font-medium">
+                  {order.notes || 'No special instructions provided for this order.'}
+                </div>
               </div>
             </Card>
 
             {/* Progress Visualization */}
             <Card title="Completion Progress">
               <div className="space-y-4">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-slate-400">
+                <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-brand-secondary">
                   <span>Progress</span>
                   <span>{order.status === 'completed' ? '100' : order.status === 'progress' ? '65' : '15'}%</span>
                 </div>
@@ -236,7 +254,7 @@ const OrderDetail = () => {
                     style={{ width: `${order.status === 'completed' ? '100' : order.status === 'progress' ? '65' : '15'}%` }}
                   ></div>
                 </div>
-                <p className="text-[10px] text-slate-500 italic font-medium">Estimated delivery by Tomorrow, 5:00 PM</p>
+                <p className="text-[10px] text-brand-secondary/50 italic font-medium">Estimated updates coming soon</p>
               </div>
             </Card>
           </div>

@@ -5,7 +5,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { ShoppingBag, Clock, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockOrders, orderStats } from '../data/mockOrders';
+import { useOrders } from '../context/OrdersContext';
 import { Link } from 'react-router-dom';
 
 const chartData = [
@@ -19,6 +19,16 @@ const chartData = [
 ];
 
 const Dashboard = () => {
+  const { orders } = useOrders();
+
+  // Calculate stats dynamically
+  const stats = {
+    total: orders.length,
+    pending: orders.filter(o => o.status === 'pending').length,
+    completed: orders.filter(o => o.status === 'completed').length,
+    cancelled: orders.filter(o => o.status === 'cancelled').length,
+  };
+
   return (
     <PageWrapper>
       <div className="space-y-8">
@@ -39,7 +49,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
             title="Total Orders" 
-            value={orderStats.total} 
+            value={stats.total} 
             icon={ShoppingBag} 
             trend="up" 
             trendValue="12.5"
@@ -47,7 +57,7 @@ const Dashboard = () => {
           />
           <StatCard 
             title="Pending Approval" 
-            value={orderStats.pending} 
+            value={stats.pending} 
             icon={Clock} 
             trend="up" 
             trendValue="3.2"
@@ -55,7 +65,7 @@ const Dashboard = () => {
           />
           <StatCard 
             title="Completed" 
-            value={orderStats.completed} 
+            value={stats.completed} 
             icon={CheckCircle2} 
             trend="up" 
             trendValue="8.4"
@@ -63,7 +73,7 @@ const Dashboard = () => {
           />
           <StatCard 
             title="Cancelled" 
-            value={orderStats.cancelled} 
+            value={stats.cancelled} 
             icon={XCircle} 
             trend="down" 
             trendValue="1.5"
@@ -127,15 +137,15 @@ const Dashboard = () => {
             </Link>
           }>
             <div className="space-y-6">
-              {mockOrders.slice(0, 4).map((order) => (
+              {orders.slice(0, 5).map((order) => (
                 <div key={order.id} className="flex items-center justify-between group">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand-surface border border-brand-border flex items-center justify-center font-bold text-xs text-white group-hover:border-brand-accent/50 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-brand-surface border border-brand-border flex items-center justify-center font-bold text-xs text-brand-primary group-hover:border-brand-accent/50 transition-colors">
                       {order.avatar}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-brand-primary">{order.customer}</p>
-                      <p className="text-xs text-brand-secondary">{order.id} • ${order.total}</p>
+                      <p className="text-xs text-brand-secondary">{order.id} • ${order.total.toLocaleString()}</p>
                     </div>
                   </div>
                   <Badge status={order.status}>{order.status}</Badge>

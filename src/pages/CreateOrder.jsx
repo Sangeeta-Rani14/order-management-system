@@ -6,7 +6,7 @@ const CreateOrder = () => {
   return (
     <PageWrapper>
       <div className="space-y-4">
-        <h1 className="text-3xl font-bold font-['Outfit'] text-white">Create New Order</h1>
+        <h1 className="text-3xl font-bold font-['Outfit'] text-brand-primary">Create New Order</h1>
         <p className="text-slate-400">Step through our smart wizard to generate a new order entry.</p>
         <CreateOrderForm />
       </div>
